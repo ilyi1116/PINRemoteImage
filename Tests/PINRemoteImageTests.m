@@ -141,7 +141,7 @@ static inline BOOL PINImageAlphaInfoIsOpaque(CGImageAlphaInfo info) {
 
 - (NSURL *)progressiveURL
 {
-    return [NSURL URLWithString:@"https://s-media-cache-ak0.pinimg.com/564x/80/03/1b/80031b76573a358ed4fed5de391b6d36.jpg"];
+    return [NSURL URLWithString:@"https://s-media-cache-ak0.pinimg.com/750x/80/03/1b/80031b76573a358ed4fed5de391b6d36.jpg"];
 }
 
 - (NSArray <NSURL *> *)bigURLs
@@ -178,13 +178,13 @@ static inline BOOL PINImageAlphaInfoIsOpaque(CGImageAlphaInfo info) {
     [super setUp];
     // Put setup code here. This method is called before the invocation of each test method in the class.
     self.imageManager = [[PINRemoteImageManager alloc] init];
+    [self.imageManager.cache removeAllObjects];
 }
 
 - (void)tearDown
 {
     // Put teardown code here. This method is called after the invocation of each test method in the class.
     //clear disk cache
-    [self.imageManager.cache removeAllObjects];
     self.imageManager = nil;
     [super tearDown];
 }
@@ -1078,8 +1078,17 @@ static inline BOOL PINImageAlphaInfoIsOpaque(CGImageAlphaInfo info) {
 
 - (void)testResume
 {
-    __block BOOL renderedImageQualityGreater = NO;
     dispatch_semaphore_t semaphore = dispatch_semaphore_create(0);
+    weakify(self);
+    [self.imageManager setEstimatedRemainingTimeThresholdForProgressiveDownloads:0.001 completion:^{
+        strongify(self);
+        [self.imageManager setProgressiveRendersMaxProgressiveRenderSize:CGSizeMake(10000, 10000) completion:^{
+            dispatch_semaphore_signal(semaphore);
+        }];
+    }];
+    dispatch_semaphore_wait(semaphore, [self timeout]);
+    
+    __block BOOL renderedImageQualityGreater = NO;
     [self.imageManager downloadImageWithURL:[self progressiveURL]
                                     options:PINRemoteImageManagerDownloadOptionsNone
                               progressImage:^(PINRemoteImageManagerResult * _Nonnull result) {
